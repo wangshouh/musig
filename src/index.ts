@@ -1,4 +1,4 @@
-import { schnorr, utils, Point, CURVE } from "lib/@noble/secp256k1"
+import { schnorr, utils, Point, CURVE, JacobianPoint } from "lib/@noble/secp256k1/index"
 
 function str2ab(str: String) {
     var buf = new ArrayBuffer(str.length * 2); // 2 bytes for each char
@@ -24,3 +24,17 @@ async function computeCoefficient(ell: Uint8Array, idx: number): Promise<bigint>
     return coefficient;
 }
 
+async function pubKeyCombine(pubKeys: Uint8Array[], pubKeyHash:Uint8Array ) {
+    let X = null;
+    for (let i = 0; i < pubKeys.length; i++) {
+        const Xi = JacobianPoint.fromAffine(Point.fromHex(pubKeys[i]));
+        const coefficient = await computeCoefficient(pubKeyHash, i);
+        const summand = Xi.multiply(coefficient);
+        if (X == null) {
+            X = summand;
+        } else {
+            X = X.add(summand);
+        }
+    }
+    return X;
+}
