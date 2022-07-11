@@ -15,5 +15,12 @@ async function computeEll(pubKeys: Uint8Array[]) {
     return utils.sha256(utils.concatBytes(...pubKeys))
 }
 
-
+async function computeCoefficient(ell: Uint8Array, idx: number): Promise<bigint> {
+    let idxBuf = new Uint8Array(4);
+    idxBuf[0] = idx
+    const data = utils.concatBytes(...[MUSIG_TAG, MUSIG_TAG, ell, idxBuf]);
+    const hashData = await utils.sha256(data);
+    const coefficient = utils.mod(utils.bytesToNumber(hashData));
+    return coefficient;
+}
 
