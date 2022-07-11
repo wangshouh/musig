@@ -1,0 +1,14 @@
+{
+  "name": "musig",
+  "version": "1.0.0",
+  "description": "A easy package for schnorr musig",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "musig"
+  ],
+  "author": "WongSSH",
+  "license": "MIT"
+}
