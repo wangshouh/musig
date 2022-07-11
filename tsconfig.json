@@ -11,5 +11,6 @@
       "preserveConstEnums": true,
       "resolveJsonModule": true,
       "baseUrl": ".",
-    }
+    },
+    "include": ["src/**/*"]
 }
