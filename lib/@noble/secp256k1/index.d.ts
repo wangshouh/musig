@@ -133,4 +133,5 @@ export declare const utils: {
     taggedHash: (tag: string, ...messages: Uint8Array[]) => Promise<Uint8Array>;
     taggedHashSync: (tag: string, ...messages: Uint8Array[]) => Uint8Array;
     precompute(windowSize?: number, point?: Point): Point;
+    bytesToNumber(bytes: Uint8Array): bigint;
 };
