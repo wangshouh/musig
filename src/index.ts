@@ -9,7 +9,20 @@ function str2ab(str: String) {
     return bufView;
 }
 
-const MUSIG_TAG = await utils.sha256(str2ab("MuSig coefficient"));
+const MUSIG_TAG = utils.sha256(str2ab("MuSig coefficient"));
+
+interface publicData {
+    pubKeys: Uint8Array[],
+    message: Uint8Array,
+    pubKeyHash: Uint8Array,
+    pubKeyCombined: bigint,
+    pubKeyParity: boolean,
+    commitments: Uint8Array[],
+    nonces: bigint[],
+    nonceCombined: bigint,
+    partialSignatures: bigint[],
+    signature: Uint8Array,
+}
 
 interface Session {
     sessionId: Uint8Array,
@@ -28,27 +41,52 @@ interface Session {
     partialSignature?: bigint
 }
 
+class PublicDataClass {
+    pubKeys: Uint8Array[];
+    message: Uint8Array;
+    pubKeyHash: Promise<Uint8Array>;
+    pubKeyCombined: Promise<bigint>;
 
-async function computeEll(pubKeys: Uint8Array[]) {
-    return utils.sha256(utils.concatBytes(...pubKeys))
+    constructor(pubKeys: Uint8Array[], message: string) {
+        this.pubKeys = pubKeys;
+        this.message = str2ab(message);
+        this.pubKeyHash = this.computeEll();
+        this.pubKeyCombined = this.initPubKeyCombined();
+    }
+
+    /**
+     * computeEll
+     */
+    private async computeEll(): Promise<Uint8Array> {
+        return utils.sha256(utils.concatBytes(...this.pubKeys))
+    }
+
+    private async initPubKeyCombined() {
+        const pkCombined = await pubKeyCombine(this.pubKeys, await this.pubKeyHash);
+        const pkPoint = pkCombined.toAffine()
+        return pkPoint.x;
+    }
+
 }
+
 
 async function computeCoefficient(ell: Uint8Array, idx: number): Promise<bigint> {
     let idxBuf = new Uint8Array(4);
-    idxBuf[0] = idx
-    const data = utils.concatBytes(...[MUSIG_TAG, MUSIG_TAG, ell, idxBuf]);
+    const MUSIG_TAG_RESLOVE = await MUSIG_TAG;
+    idxBuf[0] = idx;
+    const data = utils.concatBytes(...[MUSIG_TAG_RESLOVE, MUSIG_TAG_RESLOVE, ell, idxBuf]);
     const hashData = await utils.sha256(data);
     const coefficient = utils.mod(utils.bytesToNumber(hashData));
     return coefficient;
 }
 
 async function pubKeyCombine(pubKeys: Uint8Array[], pubKeyHash: Uint8Array) {
-    let X = null;
+    let X = JacobianPoint.ZERO;
     for (let i = 0; i < pubKeys.length; i++) {
         const Xi = JacobianPoint.fromAffine(Point.fromHex(pubKeys[i]));
         const coefficient = await computeCoefficient(pubKeyHash, i);
         const summand = Xi.multiply(coefficient);
-        if (X == null) {
+        if (X == JacobianPoint.ZERO) {
             X = summand;
         } else {
             X = X.add(summand);
