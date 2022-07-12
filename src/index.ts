@@ -46,27 +46,28 @@ class PublicDataClass {
     message: Uint8Array;
     pubKeyHash: Promise<Uint8Array>;
     pubKeyCombined: Promise<bigint>;
+    pubKeyParity: Promise<boolean>;
+    pkPoint: Promise<Point>;
+    // pkPoint: Point;
 
     constructor(pubKeys: Uint8Array[], message: string) {
         this.pubKeys = pubKeys;
         this.message = str2ab(message);
         this.pubKeyHash = this.computeEll();
-        this.pubKeyCombined = this.initPubKeyCombined();
+        this.pkPoint = this.initPkPoint();
+        this.pubKeyCombined = this.pkPoint.then(value => value.x);
+        this.pubKeyParity = this.pkPoint.then(value => utils.hasEvenY(value));
     }
 
-    /**
-     * computeEll
-     */
     private async computeEll(): Promise<Uint8Array> {
         return utils.sha256(utils.concatBytes(...this.pubKeys))
     }
 
-    private async initPubKeyCombined() {
+    private async initPkPoint() {
         const pkCombined = await pubKeyCombine(this.pubKeys, await this.pubKeyHash);
-        const pkPoint = pkCombined.toAffine()
-        return pkPoint.x;
+        const pk = pkCombined.toAffine();
+        return pk
     }
-
 }
 
 
