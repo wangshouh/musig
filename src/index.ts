@@ -1,4 +1,4 @@
-import { schnorr, utils, Point, CURVE, JacobianPoint } from "lib/@noble/secp256k1/index"
+import { schnorr, utils, Point, CURVE, JacobianPoint } from "src/@noble/secp256k1/index"
 
 function str2ab(str: String) {
     var buf = new ArrayBuffer(str.length * 2); // 2 bytes for each char
@@ -41,7 +41,7 @@ interface Session {
     partialSignature?: bigint
 }
 
-class PublicDataClass {
+export class PublicDataClass {
     pubKeys: Uint8Array[];
     message: Uint8Array;
     pubKeyHash: Promise<Uint8Array>;
