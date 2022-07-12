@@ -1,15 +1,6 @@
-import { schnorr, utils, Point, CURVE, JacobianPoint } from "src/@noble/secp256k1/index"
+import { schnorr, utils, Point, CURVE, JacobianPoint } from "./@noble/secp256k1/index.js"
 
-function str2ab(str: String) {
-    var buf = new ArrayBuffer(str.length * 2); // 2 bytes for each char
-    var bufView = new Uint8Array(buf);
-    for (var i = 0, strLen = str.length; i < strLen; i++) {
-        bufView[i] = str.charCodeAt(i);
-    }
-    return bufView;
-}
-
-const MUSIG_TAG = utils.sha256(str2ab("MuSig coefficient"));
+const MUSIG_TAG = utils.sha256("MuSig coefficient");
 
 interface publicData {
     pubKeys: Uint8Array[],
@@ -43,7 +34,7 @@ interface Session {
 
 export class PublicDataClass {
     pubKeys: Uint8Array[];
-    message: Uint8Array;
+    message: Promise<Uint8Array>;
     pubKeyHash: Promise<Uint8Array>;
     pubKeyCombined: Promise<bigint>;
     pubKeyParity: Promise<boolean>;
@@ -52,7 +43,7 @@ export class PublicDataClass {
 
     constructor(pubKeys: Uint8Array[], message: string) {
         this.pubKeys = pubKeys;
-        this.message = str2ab(message);
+        this.message = utils.sha256(message);
         this.pubKeyHash = this.computeEll();
         this.pkPoint = this.initPkPoint();
         this.pubKeyCombined = this.pkPoint.then(value => value.x);
