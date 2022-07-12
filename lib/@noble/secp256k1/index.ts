@@ -1529,6 +1529,8 @@ export const utils = {
   mod,
   invert,
   bytesToNumber,
+  hasEvenY,
+  numTo32b,
 
   sha256: async (...messages: Uint8Array[]): Promise<Uint8Array> => {
     if (crypto.web) {
