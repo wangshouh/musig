@@ -1532,14 +1532,14 @@ export const utils = {
   hasEvenY,
   numTo32b,
 
-  sha256: async (...messages: Uint8Array[]): Promise<Uint8Array> => {
+  sha256: async (...messages: any): Promise<Uint8Array> => {
     if (crypto.web) {
       const buffer = await crypto.web.subtle.digest('SHA-256', concatBytes(...messages));
       return new Uint8Array(buffer);
     } else if (crypto.node) {
       const { createHash } = crypto.node;
       const hash = createHash('sha256');
-      messages.forEach((m) => hash.update(m));
+      messages.forEach((m: any) => hash.update(m));
       return Uint8Array.from(hash.digest());
     } else {
       throw new Error("The environment doesn't have sha256 function");
