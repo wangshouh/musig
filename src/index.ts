@@ -109,12 +109,12 @@ export class SessionData extends PublicDataClass {
     }
 
     private async secretKeyInit() {
-        const ell = await super.pubKeyHash;
+        const ell = await this.pubKeyHash;
         const coefficient = await computeCoefficient(ell, this.idx);
         let secretKey = utils.mod(this.privateKey * coefficient, CURVE.n);
         const privarePoint = Point.fromPrivateKey(this.privateKey);
         const ownKeyParity = utils.hasEvenY(privarePoint);
-        if (await super.pubKeyParity !== ownKeyParity) {
+        if (await this.pubKeyParity !== ownKeyParity) {
             secretKey = CURVE.n - secretKey;
         }
         return secretKey;
@@ -122,8 +122,8 @@ export class SessionData extends PublicDataClass {
     
     private async secretNonceInit() {
         const sessionId = this.sessionId;
-        const message = await super.message;
-        const pubKeyCombined = await super.pubKeyCombined;
+        const message = await this.message;
+        const pubKeyCombined = await this.pubKeyCombined;
         const privateKey = this.privateKey;
         const nonceData = utils.concatBytes(...
             [
@@ -138,45 +138,4 @@ export class SessionData extends PublicDataClass {
         const secretNonce = await this.secretNonce;
         return Point.fromPrivateKey(secretNonce); 
     }
-
-
-}
-
-
-async function sessionInitialize(
-    sessionId: Uint8Array,
-    privateKey: bigint,
-    message:Uint8Array,
-    pubKeyCombined: bigint,
-    pkParity: boolean,
-    ell: Uint8Array,
-    idx: number
-) {
-    const session: Session = {
-        sessionId: sessionId,
-        message: message,
-        pubKeyCombined: pubKeyCombined,
-        pkParity: pkParity,
-        ell: ell,
-        idx: idx,
-    }
-    const coefficient = await computeCoefficient(ell, idx);
-    session.secretKey = utils.mod(privateKey * coefficient, CURVE.n);
-    const privarePoint = Point.fromPrivateKey(privateKey);
-    session.ownKeyParity = utils.hasEvenY(privarePoint);
-    if (session.pkParity !== session.ownKeyParity) {
-        session.secretKey = CURVE.n - session.secretKey;
-    }
-    const nonceData = utils.concatBytes(...
-        [
-            sessionId, message, utils.numTo32b(session.pubKeyCombined), utils.numTo32b(privateKey)
-        ]
-    );
-    session.secretNonce = await utils.sha256(nonceData);
-    const R = Point.fromPrivateKey(session.secretNonce);
-    session.nonce = R.x;
-    session.nonceParity = utils.hasEvenY(R);
-    session.commitment = await utils.sha256(utils.numTo32b(session.nonce));
-    
-    return session;
 }
