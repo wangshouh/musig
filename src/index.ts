@@ -145,6 +145,7 @@ export class aggregationData extends PublicDataClass {
     nonces: bigint[];
     nonceCombined: bigint;
     combinedNonceParity: boolean;
+    partialSignatures: Promise<bigint[]>;
 
     constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
@@ -152,6 +153,7 @@ export class aggregationData extends PublicDataClass {
         this.nonces = this.initNonces(sessions);
         this.nonceCombined = this.initR().x;
         this.combinedNonceParity = utils.hasEvenY(this.initR());
+        this.partialSignatures = this.partialSign(sessions);
     }
 
     private initCommitments(sessions: SessionData[]) {
@@ -173,8 +175,34 @@ export class aggregationData extends PublicDataClass {
             R = R.add(addR);
         }
         const AffineR = R.toAffine();
-        // session.combinedNonceParity = utils.hasEvenY(AffineR);
-    
         return AffineR;
     }
+
+    private async partialSign(sessions: SessionData[]) {
+        const partialSignatures: bigint[] = []
+        const e = utils.bytesToNumber(await utils.taggedHash(
+            'BIP0340/challenge',
+            utils.numTo32b(this.nonceCombined),
+            utils.numTo32b(await this.pubKeyCombined),
+            this.message
+        ));
+        
+        sessions.forEach(
+            async session => {
+                const sk = await session.secretKey;
+                let k = utils.bytesToNumber(await session.secretNonce);
+                if (await session.nonceParity !== this.combinedNonceParity) {
+                    k = CURVE.n - k;
+                }
+
+                partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
+            }
+        )
+        
+        return partialSignatures
+    }
+}
+
+function nonceCombined(nonceCombined: any): Uint8Array {
+    throw new Error("Function not implemented.");
 }
