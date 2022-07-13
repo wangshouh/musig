@@ -141,7 +141,25 @@ export class SessionData extends PublicDataClass {
 }
 
 export class aggregationData extends PublicDataClass {
+    commitments: Uint8Array[];
+    nonces: bigint[];
+
     constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
+        this.commitments = this.initCommitments(sessions);
+        this.nonces = this.initNonces(sessions);
+        
+    }
+
+    private initCommitments(sessions: SessionData[]) {
+        let commitments: Uint8Array[] = [];
+        sessions.forEach(data => (data.commitment.then(value => commitments.push(value))));
+        return commitments
+    }
+
+    private initNonces(sessions: SessionData[]) {
+        let nonces: bigint[] = [];
+        sessions.forEach(data => (data.nonce.then(value => nonces.push(value))));
+        return nonces
     }
 }
