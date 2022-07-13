@@ -142,7 +142,7 @@ export class SessionData extends PublicDataClass {
 
 export class aggregationData extends PublicDataClass {
     commitments: Promise<Uint8Array[]>;
-    nonces: bigint[];
+    nonces: Promise<bigint[]>;
     nonceCombined: bigint;
     combinedNonceParity: boolean;
     partialSignatures: Promise<bigint[]>;
@@ -167,22 +167,24 @@ export class aggregationData extends PublicDataClass {
         return commitments
     }
 
-    private initNonces(sessions: SessionData[]) {
+    private async initNonces(sessions: SessionData[]) {
         let nonces: bigint[] = [];
-        sessions.forEach(async data => {
-            let value = await data.nonce;
-            nonces.push(value);
-        });
+        for (let i=0; i<sessions.length; i++) {
+            nonces.push(await sessions[i].nonce)
+        }
+
         return nonces
     }
 
-    private initR() {
-        let R = JacobianPoint.fromAffine(Point.fromHex(this.nonces[0].toString(16)));
-        for (let i = 1; i < this.nonces.length; i++) {
-            const addR = JacobianPoint.fromAffine(Point.fromHex(this.nonces[i].toString(16)));
+    private async initR() {
+        let nonces = await this.nonces;
+        let R = JacobianPoint.fromAffine(Point.fromHex(nonces[0].toString(16)));
+        for (let i = 1; i < nonces.length; i++) {
+            const addR = JacobianPoint.fromAffine(Point.fromHex(nonces[i].toString(16)));
             R = R.add(addR);
         }
         const AffineR = R.toAffine();
+        
         return AffineR;
     }
 
