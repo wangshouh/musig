@@ -146,6 +146,7 @@ export class aggregationData extends PublicDataClass {
     nonceCombined: bigint;
     combinedNonceParity: boolean;
     partialSignatures: Promise<bigint[]>;
+    signature: Promise<Uint8Array>;
 
     constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
@@ -154,6 +155,7 @@ export class aggregationData extends PublicDataClass {
         this.nonceCombined = this.initR().x;
         this.combinedNonceParity = utils.hasEvenY(this.initR());
         this.partialSignatures = this.partialSign(sessions);
+        this.signature = this.partialSigCombine();
     }
 
     private initCommitments(sessions: SessionData[]) {
@@ -186,7 +188,7 @@ export class aggregationData extends PublicDataClass {
             utils.numTo32b(await this.pubKeyCombined),
             this.message
         ));
-        
+
         sessions.forEach(
             async session => {
                 const sk = await session.secretKey;
@@ -198,11 +200,21 @@ export class aggregationData extends PublicDataClass {
                 partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
             }
         )
-        
+
         return partialSignatures
+    }
+
+    private async partialSigCombine() {
+        const R = JacobianPoint.fromAffine(Point.fromHex(this.nonceCombined.toString(16)));
+        const Rx = utils.numTo32b(R.x);
+        let partialSigs = await this.partialSignatures;
+        let s = partialSigs[0];
+        for (let i = 1; i < partialSigs.length; i++) {
+            s = utils.mod(s + partialSigs[i], CURVE.n);
+        }
+
+        return utils.concatBytes(...[Rx, utils.numTo32b(s)])
     }
 }
 
-function nonceCombined(nonceCombined: any): Uint8Array {
-    throw new Error("Function not implemented.");
-}
+
