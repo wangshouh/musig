@@ -143,12 +143,15 @@ export class SessionData extends PublicDataClass {
 export class aggregationData extends PublicDataClass {
     commitments: Uint8Array[];
     nonces: bigint[];
+    nonceCombined: bigint;
+    combinedNonceParity: boolean;
 
     constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
         this.commitments = this.initCommitments(sessions);
         this.nonces = this.initNonces(sessions);
-        
+        this.nonceCombined = this.initR().x;
+        this.combinedNonceParity = utils.hasEvenY(this.initR());
     }
 
     private initCommitments(sessions: SessionData[]) {
@@ -161,5 +164,17 @@ export class aggregationData extends PublicDataClass {
         let nonces: bigint[] = [];
         sessions.forEach(data => (data.nonce.then(value => nonces.push(value))));
         return nonces
+    }
+
+    private initR() {
+        let R = JacobianPoint.fromAffine(Point.fromHex(this.nonces[0].toString(16)));
+        for (let i = 1; i < this.nonces.length; i++) {
+            const addR = JacobianPoint.fromAffine(Point.fromHex(this.nonces[i].toString(16)));
+            R = R.add(addR);
+        }
+        const AffineR = R.toAffine();
+        // session.combinedNonceParity = utils.hasEvenY(AffineR);
+    
+        return AffineR;
     }
 }
