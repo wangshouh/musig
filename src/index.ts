@@ -59,15 +59,15 @@ async function pubKeyCombine(pubKeys: Uint8Array[], pubKeyHash: Uint8Array) {
 
 export class PublicDataClass {
     pubKeys: Uint8Array[];
-    message: Promise<Uint8Array>;
+    message: Uint8Array;
     pubKeyHash: Promise<Uint8Array>;
     pubKeyCombined: Promise<bigint>;
     pubKeyParity: Promise<boolean>;
     pkPoint: Promise<Point>;
 
-    constructor(pubKeys: Uint8Array[], message: string) {
+    constructor(pubKeys: Uint8Array[], message: Uint8Array) {
         this.pubKeys = pubKeys;
-        this.message = utils.sha256(message);
+        this.message = message;
         this.pubKeyHash = this.computeEll();
         this.pkPoint = this.initPkPoint();
         this.pubKeyCombined = this.pkPoint.then(value => value.x);
@@ -96,7 +96,7 @@ export class SessionData extends PublicDataClass {
     commitment: Promise<Uint8Array>;
 
 
-    constructor(idx:number, privateKey: bigint, pubKeys: Uint8Array[], message: string) {
+    constructor(idx: number, privateKey: bigint, pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
         this.sessionId = utils.randomBytes(32);
         this.privateKey = privateKey;
@@ -119,7 +119,7 @@ export class SessionData extends PublicDataClass {
         }
         return secretKey;
     }
-    
+
     private async secretNonceInit() {
         const sessionId = this.sessionId;
         const message = await this.message;
@@ -136,6 +136,12 @@ export class SessionData extends PublicDataClass {
 
     private async RInit() {
         const secretNonce = await this.secretNonce;
-        return Point.fromPrivateKey(secretNonce); 
+        return Point.fromPrivateKey(secretNonce);
+    }
+}
+
+export class aggregationData extends PublicDataClass {
+    constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
+        super(pubKeys, message);
     }
 }
