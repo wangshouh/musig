@@ -85,7 +85,62 @@ export class PublicDataClass {
     }
 }
 
+export class SessionData extends PublicDataClass {
+    idx: number;
+    sessionId: Uint8Array;
+    privateKey: bigint;
+    secretKey: Promise<bigint>;
+    secretNonce: Promise<Uint8Array>;
+    nonce: Promise<bigint>;
+    nonceParity: Promise<boolean>;
+    commitment: Promise<Uint8Array>;
 
+
+    constructor(idx:number, privateKey: bigint, pubKeys: Uint8Array[], message: string) {
+        super(pubKeys, message);
+        this.sessionId = utils.randomBytes(32);
+        this.privateKey = privateKey;
+        this.idx = idx;
+        this.secretKey = this.secretKeyInit();
+        this.secretNonce = this.secretNonceInit();
+        this.nonce = this.RInit().then(point => point.x);
+        this.nonceParity = this.RInit().then(point => utils.hasEvenY(point));
+        this.commitment = this.nonce.then(value => utils.sha256(utils.numTo32b(value)));
+    }
+
+    private async secretKeyInit() {
+        const ell = await super.pubKeyHash;
+        const coefficient = await computeCoefficient(ell, this.idx);
+        let secretKey = utils.mod(this.privateKey * coefficient, CURVE.n);
+        const privarePoint = Point.fromPrivateKey(this.privateKey);
+        const ownKeyParity = utils.hasEvenY(privarePoint);
+        if (await super.pubKeyParity !== ownKeyParity) {
+            secretKey = CURVE.n - secretKey;
+        }
+        return secretKey;
+    }
+    
+    private async secretNonceInit() {
+        const sessionId = this.sessionId;
+        const message = await super.message;
+        const pubKeyCombined = await super.pubKeyCombined;
+        const privateKey = this.privateKey;
+        const nonceData = utils.concatBytes(...
+            [
+                sessionId, message, utils.numTo32b(pubKeyCombined), utils.numTo32b(privateKey)
+            ]
+        );
+
+        return utils.sha256(nonceData);
+    }
+
+    private async RInit() {
+        const secretNonce = await this.secretNonce;
+        return Point.fromPrivateKey(secretNonce); 
+    }
+
+
+}
 
 
 async function sessionInitialize(
