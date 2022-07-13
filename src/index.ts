@@ -32,36 +32,6 @@ interface Session {
     partialSignature?: bigint
 }
 
-export class PublicDataClass {
-    pubKeys: Uint8Array[];
-    message: Promise<Uint8Array>;
-    pubKeyHash: Promise<Uint8Array>;
-    pubKeyCombined: Promise<bigint>;
-    pubKeyParity: Promise<boolean>;
-    pkPoint: Promise<Point>;
-    // pkPoint: Point;
-
-    constructor(pubKeys: Uint8Array[], message: string) {
-        this.pubKeys = pubKeys;
-        this.message = utils.sha256(message);
-        this.pubKeyHash = this.computeEll();
-        this.pkPoint = this.initPkPoint();
-        this.pubKeyCombined = this.pkPoint.then(value => value.x);
-        this.pubKeyParity = this.pkPoint.then(value => utils.hasEvenY(value));
-    }
-
-    private async computeEll(): Promise<Uint8Array> {
-        return utils.sha256(utils.concatBytes(...this.pubKeys))
-    }
-
-    private async initPkPoint() {
-        const pkCombined = await pubKeyCombine(this.pubKeys, await this.pubKeyHash);
-        const pk = pkCombined.toAffine();
-        return pk
-    }
-}
-
-
 async function computeCoefficient(ell: Uint8Array, idx: number): Promise<bigint> {
     let idxBuf = new Uint8Array(4);
     const MUSIG_TAG_RESLOVE = await MUSIG_TAG;
@@ -86,6 +56,37 @@ async function pubKeyCombine(pubKeys: Uint8Array[], pubKeyHash: Uint8Array) {
     }
     return X;
 }
+
+export class PublicDataClass {
+    pubKeys: Uint8Array[];
+    message: Promise<Uint8Array>;
+    pubKeyHash: Promise<Uint8Array>;
+    pubKeyCombined: Promise<bigint>;
+    pubKeyParity: Promise<boolean>;
+    pkPoint: Promise<Point>;
+
+    constructor(pubKeys: Uint8Array[], message: string) {
+        this.pubKeys = pubKeys;
+        this.message = utils.sha256(message);
+        this.pubKeyHash = this.computeEll();
+        this.pkPoint = this.initPkPoint();
+        this.pubKeyCombined = this.pkPoint.then(value => value.x);
+        this.pubKeyParity = this.pkPoint.then(value => utils.hasEvenY(value));
+    }
+
+    private async computeEll(): Promise<Uint8Array> {
+        return utils.sha256(utils.concatBytes(...this.pubKeys))
+    }
+
+    private async initPkPoint() {
+        const pkCombined = await pubKeyCombine(this.pubKeys, await this.pubKeyHash);
+        const pk = pkCombined.toAffine();
+        return pk
+    }
+}
+
+
+
 
 async function sessionInitialize(
     sessionId: Uint8Array,
