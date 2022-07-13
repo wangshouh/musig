@@ -196,14 +196,13 @@ export class aggregationData extends PublicDataClass {
             utils.numTo32b(await this.pubKeyCombined),
             this.message
         ));
-        for (let i = 1; i < sessions.length; i++) {
+        for (let i = 0; i < sessions.length; i++) {
             const session = sessions[i];
             const sk = await session.secretKey;
             let k = utils.bytesToNumber(await session.secretNonce);
             if (await session.nonceParity !== await this.combinedNonceParity) {
                 k = CURVE.n - k;
             }
-
             partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
         }
 
