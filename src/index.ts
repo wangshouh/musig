@@ -143,8 +143,8 @@ export class SessionData extends PublicDataClass {
 export class aggregationData extends PublicDataClass {
     commitments: Promise<Uint8Array[]>;
     nonces: Promise<bigint[]>;
-    nonceCombined: bigint;
-    combinedNonceParity: boolean;
+    nonceCombined: Promise<bigint>;
+    combinedNonceParity: Promise<boolean>;
     partialSignatures: Promise<bigint[]>;
     signature: Promise<Uint8Array>;
 
@@ -152,8 +152,8 @@ export class aggregationData extends PublicDataClass {
         super(pubKeys, message);
         this.commitments = this.initCommitments(sessions);
         this.nonces = this.initNonces(sessions);
-        this.nonceCombined = this.initR().x;
-        this.combinedNonceParity = utils.hasEvenY(this.initR());
+        this.nonceCombined = this.initR().then(value => value.x);
+        this.combinedNonceParity = this.initR().then(value => utils.hasEvenY(value));
         this.partialSignatures = this.partialSign(sessions);
         this.signature = this.partialSigCombine();
     }
@@ -184,7 +184,7 @@ export class aggregationData extends PublicDataClass {
             R = R.add(addR);
         }
         const AffineR = R.toAffine();
-        
+
         return AffineR;
     }
 
@@ -192,28 +192,27 @@ export class aggregationData extends PublicDataClass {
         const partialSignatures: bigint[] = []
         const e = utils.bytesToNumber(await utils.taggedHash(
             'BIP0340/challenge',
-            utils.numTo32b(this.nonceCombined),
+            utils.numTo32b(await this.nonceCombined),
             utils.numTo32b(await this.pubKeyCombined),
             this.message
         ));
-
-        sessions.forEach(
-            async session => {
-                const sk = await session.secretKey;
-                let k = utils.bytesToNumber(await session.secretNonce);
-                if (await session.nonceParity !== this.combinedNonceParity) {
-                    k = CURVE.n - k;
-                }
-
-                partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
+        for (let i = 1; i < sessions.length; i++) {
+            const session = sessions[i];
+            const sk = await session.secretKey;
+            let k = utils.bytesToNumber(await session.secretNonce);
+            if (await session.nonceParity !== await this.combinedNonceParity) {
+                k = CURVE.n - k;
             }
-        )
+
+            partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
+        }
 
         return partialSignatures
     }
 
     private async partialSigCombine() {
-        const R = JacobianPoint.fromAffine(Point.fromHex(this.nonceCombined.toString(16)));
+        const nonceCombined = await this.nonceCombined;
+        const R = JacobianPoint.fromAffine(Point.fromHex(nonceCombined.toString(16)));
         const Rx = utils.numTo32b(R.x);
         let partialSigs = await this.partialSignatures;
         let s = partialSigs[0];
