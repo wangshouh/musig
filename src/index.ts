@@ -158,7 +158,7 @@ export function aggregateTranserData(sessions: SessionTransfer[]) {
     }
     const AffineR = R.toAffine();
 
-    const nonceCombined = R.x;
+    const nonceCombined = AffineR.x;
     const combinedNonceParity = utils.hasEvenY(AffineR);
 
     const aggData: aggregateTransferData = {
