@@ -46,3 +46,12 @@ console.log(isValid)
 ```
 
 To use this code under application, you need to complete 3 rounds of message exchange. In the first round of message exchange, each signer shoud exchange `publickey` and generate `pubKeys`. In the second round of message exchange, signer should exchange `session.exportSession()` and finish `partialSign` method. In the third round of message exchange, each signer should exchange `partialSignature`. After completing three rounds of information exchange, each signer can run the function `partialSigCombine` locally to obtain the final complete signature after obtaining partial signature information and each signer can run `schnorr.verify` to verify the signature.
+
+During the use of this code, you may encounter this error:
+```
+Error: hexToBytes: received invalid unpadded hex63
+```
+
+This error occurs because the generated value of the random number does not satisfy certain conditions, I have not handled this error in the code, if you encounter this error, you can rerun the code to get a random number that meets the criteria.
+
+If you can fix this error, please send a PR.
