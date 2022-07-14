@@ -127,6 +127,16 @@ export class SessionData extends PublicDataClass {
         const secretNonce = await this.secretNonce;
         return Point.fromPrivateKey(secretNonce);
     }
+
+    public async exportSession() {
+        const exportSession: SessionTranser = {
+            nonce: await this.nonce,
+            nonceParity: await this.nonceParity,
+            commitment: await this.commitment
+        }
+
+        return exportSession;
+    }
 }
 
 export class aggregationData extends PublicDataClass {
