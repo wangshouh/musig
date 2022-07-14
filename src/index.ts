@@ -15,21 +15,10 @@ interface publicData {
     signature: Uint8Array,
 }
 
-interface Session {
-    sessionId: Uint8Array,
-    message: Uint8Array,
-    pubKeyCombined: bigint,
-    pkParity: boolean,
-    ell: Uint8Array,
-    idx: number,
-    secretKey?: bigint,
-    ownKeyParity?: boolean,
-    secretNonce?: Uint8Array,
-    nonce?: bigint,
-    nonceParity?: boolean,
-    commitment?: Uint8Array,
-    combinedNonceParity?: boolean,
-    partialSignature?: bigint
+interface SessionTranser {
+    nonce: bigint,
+    nonceParity: boolean,
+    commitment: Uint8Array,
 }
 
 async function computeCoefficient(ell: Uint8Array, idx: number): Promise<bigint> {
@@ -122,7 +111,7 @@ export class SessionData extends PublicDataClass {
 
     private async secretNonceInit() {
         const sessionId = this.sessionId;
-        const message = await this.message;
+        const message = this.message;
         const pubKeyCombined = await this.pubKeyCombined;
         const privateKey = this.privateKey;
         const nonceData = utils.concatBytes(...
