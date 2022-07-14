@@ -10,6 +10,8 @@ Warn: The underlying functions and classes from `noble-secp256k1` of this reposi
 
 ## Usage
 
+You need to compile this code yourself, you can `tsc` command.
+
 The sample code is as follows:
 ```javascript
 import { utils, schnorr } from "./@noble/secp256k1/index.js"
