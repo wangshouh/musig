@@ -139,6 +139,35 @@ export class SessionData extends PublicDataClass {
     }
 }
 
+interface aggregateTranserData {
+    nonceCombined: bigint;
+    combinedNonceParity: boolean;
+}
+
+function aggregateTranserData(sessions: SessionTranser[]): aggregateTranserData {
+    let commitments: Uint8Array[] = [];
+    let nonces: bigint[] = [];
+    sessions.forEach(value => {
+        commitments.push(value.commitment);
+        nonces.push(value.nonce);
+    });
+    let R = JacobianPoint.fromAffine(Point.fromHex(nonces[0].toString(16)));
+    for (let i = 1; i < nonces.length; i++) {
+        const addR = JacobianPoint.fromAffine(Point.fromHex(nonces[i].toString(16)));
+        R = R.add(addR);
+    }
+    const AffineR = R.toAffine();
+
+    const nonceCombined = R.x;
+    const combinedNonceParity = utils.hasEvenY(AffineR);
+
+    const aggData: aggregateTranserData = {
+        nonceCombined: nonceCombined,
+        combinedNonceParity: combinedNonceParity
+    }
+    return aggData
+}
+
 export class aggregationData extends PublicDataClass {
     commitments: Promise<Uint8Array[]>;
     nonces: Promise<bigint[]>;
@@ -147,7 +176,7 @@ export class aggregationData extends PublicDataClass {
     partialSignatures: Promise<bigint[]>;
     signature: Promise<Uint8Array>;
 
-    constructor(sessions: SessionData[], pubKeys: Uint8Array[], message: Uint8Array) {
+    constructor(persionSession: SessionData, sessions: SessionTranser[], pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
         this.commitments = this.initCommitments(sessions);
         this.nonces = this.initNonces(sessions);
@@ -155,21 +184,22 @@ export class aggregationData extends PublicDataClass {
         this.combinedNonceParity = this.initR().then(value => utils.hasEvenY(value));
         this.partialSignatures = this.partialSign(sessions);
         this.signature = this.partialSigCombine();
+
     }
 
-    private async initCommitments(sessions: SessionData[]) {
+    private async initCommitments(sessions: SessionTranser[]) {
         let commitments: Uint8Array[] = [];
         for (let i=0; i<sessions.length; i++) {
-            commitments.push(await sessions[i].commitment)
+            commitments.push(sessions[i].commitment)
         }
 
         return commitments
     }
 
-    private async initNonces(sessions: SessionData[]) {
+    private async initNonces(sessions: SessionTranser[]) {
         let nonces: bigint[] = [];
         for (let i=0; i<sessions.length; i++) {
-            nonces.push(await sessions[i].nonce)
+            nonces.push(sessions[i].nonce)
         }
 
         return nonces
