@@ -168,54 +168,6 @@ function aggregateTranserData(sessions: SessionTransfer[]) {
     return aggData
 }
 
-export class aggregationData extends PublicDataClass {
-    nonceCombined: bigint;
-    combinedNonceParity: boolean;
-    persionSession: SessionData;
-
-    constructor(persionSession: SessionData, transfersessions: aggregateTransferData, pubKeys: Uint8Array[], message: Uint8Array) {
-        super(pubKeys, message);
-        this.nonceCombined = transfersessions.nonceCombined;
-        this.persionSession = persionSession
-        this.combinedNonceParity = transfersessions.combinedNonceParity;
-    }
-
-
-    private async partialSign() {
-        const partialSignatures: bigint[] = []
-        const e = utils.bytesToNumber(await utils.taggedHash(
-            'BIP0340/challenge',
-            utils.numTo32b(this.nonceCombined),
-            utils.numTo32b(await this.pubKeyCombined),
-            this.message
-        ));
-
-        const sk = await this.persionSession.secretKey;
-        let k = utils.bytesToNumber(await this.persionSession.secretNonce);
-        if (await this.persionSession.nonceParity !== this.combinedNonceParity) {
-            k = CURVE.n - k;
-        }
-        partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
-
-        return partialSignatures
-    }
-
-    private async partialSigCombine() {
-        const nonceCombined = await this.nonceCombined;
-        const R = JacobianPoint.fromAffine(Point.fromHex(nonceCombined.toString(16)));
-        const Rx = utils.numTo32b(R.x);
-        let partialSigs = await this.partialSignatures;
-        let s = partialSigs[0];
-        for (let i = 1; i < partialSigs.length; i++) {
-            s = utils.mod(s + partialSigs[i], CURVE.n);
-        }
-
-        return utils.concatBytes(...[Rx, utils.numTo32b(s)])
-    }
-}
-
-
-
 async function partialSign(transfersessions: aggregateTransferData, persionSession: SessionData) {
     const partialSignatures: bigint[] = []
     const e = utils.bytesToNumber(await utils.taggedHash(
@@ -233,4 +185,17 @@ async function partialSign(transfersessions: aggregateTransferData, persionSessi
     partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
 
     return partialSignatures
+}
+
+async function partialSigCombine(transfersessions: aggregateTransferData, partialSignatures: bigint[]) {
+    const nonceCombined = transfersessions.nonceCombined;
+    const R = JacobianPoint.fromAffine(Point.fromHex(nonceCombined.toString(16)));
+    const Rx = utils.numTo32b(R.x);
+    let partialSigs = partialSignatures;
+    let s = partialSigs[0];
+    for (let i = 1; i < partialSigs.length; i++) {
+        s = utils.mod(s + partialSigs[i], CURVE.n);
+    }
+
+    return utils.concatBytes(...[Rx, utils.numTo32b(s)])
 }
