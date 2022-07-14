@@ -15,7 +15,7 @@ interface publicData {
     signature: Uint8Array,
 }
 
-interface SessionTranser {
+interface SessionTransfer {
     nonce: bigint,
     nonceParity: boolean,
     commitment: Uint8Array,
@@ -129,7 +129,7 @@ export class SessionData extends PublicDataClass {
     }
 
     public async exportSession() {
-        const exportSession: SessionTranser = {
+        const exportSession: SessionTransfer = {
             nonce: await this.nonce,
             nonceParity: await this.nonceParity,
             commitment: await this.commitment
@@ -139,12 +139,12 @@ export class SessionData extends PublicDataClass {
     }
 }
 
-interface aggregateTranserData {
+interface aggregateTransferData {
     nonceCombined: bigint;
     combinedNonceParity: boolean;
 }
 
-function aggregateTranserData(sessions: SessionTranser[]): aggregateTranserData {
+function aggregateTranserData(sessions: SessionTransfer[]) {
     let commitments: Uint8Array[] = [];
     let nonces: bigint[] = [];
     sessions.forEach(value => {
@@ -161,7 +161,7 @@ function aggregateTranserData(sessions: SessionTranser[]): aggregateTranserData 
     const nonceCombined = R.x;
     const combinedNonceParity = utils.hasEvenY(AffineR);
 
-    const aggData: aggregateTranserData = {
+    const aggData: aggregateTransferData = {
         nonceCombined: nonceCombined,
         combinedNonceParity: combinedNonceParity
     }
@@ -169,71 +169,33 @@ function aggregateTranserData(sessions: SessionTranser[]): aggregateTranserData 
 }
 
 export class aggregationData extends PublicDataClass {
-    commitments: Promise<Uint8Array[]>;
-    nonces: Promise<bigint[]>;
-    nonceCombined: Promise<bigint>;
-    combinedNonceParity: Promise<boolean>;
-    partialSignatures: Promise<bigint[]>;
-    signature: Promise<Uint8Array>;
+    nonceCombined: bigint;
+    combinedNonceParity: boolean;
+    persionSession: SessionData;
 
-    constructor(persionSession: SessionData, sessions: SessionTranser[], pubKeys: Uint8Array[], message: Uint8Array) {
+    constructor(persionSession: SessionData, transfersessions: aggregateTransferData, pubKeys: Uint8Array[], message: Uint8Array) {
         super(pubKeys, message);
-        this.commitments = this.initCommitments(sessions);
-        this.nonces = this.initNonces(sessions);
-        this.nonceCombined = this.initR().then(value => value.x);
-        this.combinedNonceParity = this.initR().then(value => utils.hasEvenY(value));
-        this.partialSignatures = this.partialSign(sessions);
-        this.signature = this.partialSigCombine();
-
+        this.nonceCombined = transfersessions.nonceCombined;
+        this.persionSession = persionSession
+        this.combinedNonceParity = transfersessions.combinedNonceParity;
     }
 
-    private async initCommitments(sessions: SessionTranser[]) {
-        let commitments: Uint8Array[] = [];
-        for (let i=0; i<sessions.length; i++) {
-            commitments.push(sessions[i].commitment)
-        }
 
-        return commitments
-    }
-
-    private async initNonces(sessions: SessionTranser[]) {
-        let nonces: bigint[] = [];
-        for (let i=0; i<sessions.length; i++) {
-            nonces.push(sessions[i].nonce)
-        }
-
-        return nonces
-    }
-
-    private async initR() {
-        let nonces = await this.nonces;
-        let R = JacobianPoint.fromAffine(Point.fromHex(nonces[0].toString(16)));
-        for (let i = 1; i < nonces.length; i++) {
-            const addR = JacobianPoint.fromAffine(Point.fromHex(nonces[i].toString(16)));
-            R = R.add(addR);
-        }
-        const AffineR = R.toAffine();
-
-        return AffineR;
-    }
-
-    private async partialSign(sessions: SessionData[]) {
+    private async partialSign() {
         const partialSignatures: bigint[] = []
         const e = utils.bytesToNumber(await utils.taggedHash(
             'BIP0340/challenge',
-            utils.numTo32b(await this.nonceCombined),
+            utils.numTo32b(this.nonceCombined),
             utils.numTo32b(await this.pubKeyCombined),
             this.message
         ));
-        for (let i = 0; i < sessions.length; i++) {
-            const session = sessions[i];
-            const sk = await session.secretKey;
-            let k = utils.bytesToNumber(await session.secretNonce);
-            if (await session.nonceParity !== await this.combinedNonceParity) {
-                k = CURVE.n - k;
-            }
-            partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
+
+        const sk = await this.persionSession.secretKey;
+        let k = utils.bytesToNumber(await this.persionSession.secretNonce);
+        if (await this.persionSession.nonceParity !== this.combinedNonceParity) {
+            k = CURVE.n - k;
         }
+        partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
 
         return partialSignatures
     }
@@ -253,3 +215,22 @@ export class aggregationData extends PublicDataClass {
 }
 
 
+
+async function partialSign(transfersessions: aggregateTransferData, persionSession: SessionData) {
+    const partialSignatures: bigint[] = []
+    const e = utils.bytesToNumber(await utils.taggedHash(
+        'BIP0340/challenge',
+        utils.numTo32b(transfersessions.nonceCombined),
+        utils.numTo32b(await persionSession.pubKeyCombined),
+        persionSession.message
+    ));
+
+    const sk = await persionSession.secretKey;
+    let k = utils.bytesToNumber(await persionSession.secretNonce);
+    if (await persionSession.nonceParity !== transfersessions.combinedNonceParity) {
+        k = CURVE.n - k;
+    }
+    partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
+
+    return partialSignatures
+}
