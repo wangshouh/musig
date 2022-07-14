@@ -46,7 +46,7 @@ async function pubKeyCombine(pubKeys: Uint8Array[], pubKeyHash: Uint8Array) {
     return X;
 }
 
-export class PublicDataClass {
+class PublicDataClass {
     pubKeys: Uint8Array[];
     message: Uint8Array;
     pubKeyHash: Promise<Uint8Array>;
@@ -144,7 +144,7 @@ interface aggregateTransferData {
     combinedNonceParity: boolean;
 }
 
-function aggregateTranserData(sessions: SessionTransfer[]) {
+export function aggregateTranserData(sessions: SessionTransfer[]) {
     let commitments: Uint8Array[] = [];
     let nonces: bigint[] = [];
     sessions.forEach(value => {
@@ -168,7 +168,7 @@ function aggregateTranserData(sessions: SessionTransfer[]) {
     return aggData
 }
 
-async function partialSign(transfersessions: aggregateTransferData, persionSession: SessionData) {
+export async function partialSign(transfersessions: aggregateTransferData, persionSession: SessionData) {
     const partialSignatures: bigint[] = []
     const e = utils.bytesToNumber(await utils.taggedHash(
         'BIP0340/challenge',
@@ -187,7 +187,7 @@ async function partialSign(transfersessions: aggregateTransferData, persionSessi
     return partialSignatures
 }
 
-async function partialSigCombine(transfersessions: aggregateTransferData, partialSignatures: bigint[]) {
+export async function partialSigCombine(transfersessions: aggregateTransferData, partialSignatures: bigint[]) {
     const nonceCombined = transfersessions.nonceCombined;
     const R = JacobianPoint.fromAffine(Point.fromHex(nonceCombined.toString(16)));
     const Rx = utils.numTo32b(R.x);
