@@ -169,7 +169,6 @@ export function aggregateTranserData(sessions: SessionTransfer[]) {
 }
 
 export async function partialSign(transfersessions: aggregateTransferData, persionSession: SessionData) {
-    const partialSignatures: bigint[] = []
     const e = utils.bytesToNumber(await utils.taggedHash(
         'BIP0340/challenge',
         utils.numTo32b(transfersessions.nonceCombined),
@@ -182,9 +181,8 @@ export async function partialSign(transfersessions: aggregateTransferData, persi
     if (await persionSession.nonceParity !== transfersessions.combinedNonceParity) {
         k = CURVE.n - k;
     }
-    partialSignatures.push(utils.mod(sk * e + k, CURVE.n))
 
-    return partialSignatures
+    return utils.mod(sk * e + k, CURVE.n)
 }
 
 export async function partialSigCombine(transfersessions: aggregateTransferData, partialSignatures: bigint[]) {
